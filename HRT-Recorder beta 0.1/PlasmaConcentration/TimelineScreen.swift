@@ -58,19 +58,19 @@ struct TimelineScreen: View {
                         .padding([.horizontal, .bottom])
                 } else if !vm.isSimulating {
                     Spacer()
-                    Text("Add a dose event to see the concentration curve.")
+                    Text("timeline.empty")
                         .font(.headline).foregroundColor(.secondary)
                         .multilineTextAlignment(.center).padding()
                     Spacer()
                 }
             }
-            .navigationTitle("HRT Timeline")
+            .navigationTitle("timeline.title")
             .toolbar {
                 // ... (Toolbar remains the same)
                 ToolbarItemGroup(placement: .navigationBarLeading) {
                     HStack {
-                        Text("Weight (kg):").font(.caption)
-                        TextField("kg", value: $vm.bodyWeightKG, format: .number)
+                        Text("timeline.bodyWeight.label").font(.caption)
+                        TextField("timeline.bodyWeight.placeholder", value: $vm.bodyWeightKG, format: .number)
                             .keyboardType(.decimalPad).submitLabel(.done).focused($weightFieldFocused).frame(width: 50)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
@@ -85,7 +85,7 @@ struct TimelineScreen: View {
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") { weightFieldFocused = false }
+                    Button("common.done") { weightFieldFocused = false }
                 }
             }
             .sheet(isPresented: $isSheetPresented) {
@@ -124,12 +124,18 @@ struct TimelineRowView: View {
     
     private var title: String {
         switch event.route {
-        case .injection: return "Injection • \(event.ester.abbreviation)"
-        case .patchApply: return "Apply Patch"
-        case .patchRemove: return "Remove Patch"
-        case .gel: return "Apply Gel"
-        case .oral: return "Oral • \(event.ester.abbreviation)"
-        case .sublingual: return "Sublingual • \(event.ester.abbreviation)"
+        case .injection:
+            return String(format: NSLocalizedString("timeline.row.injection", comment: "Timeline row title for injection"), event.ester.abbreviation)
+        case .patchApply:
+            return NSLocalizedString("timeline.row.patchApply", comment: "Timeline row title for patch apply")
+        case .patchRemove:
+            return NSLocalizedString("timeline.row.patchRemove", comment: "Timeline row title for patch removal")
+        case .gel:
+            return NSLocalizedString("timeline.row.gel", comment: "Timeline row title for gel dosing")
+        case .oral:
+            return String(format: NSLocalizedString("timeline.row.oral", comment: "Timeline row title for oral"), event.ester.abbreviation)
+        case .sublingual:
+            return String(format: NSLocalizedString("timeline.row.sublingual", comment: "Timeline row title for sublingual"), event.ester.abbreviation)
         }
     }
     
@@ -143,12 +149,12 @@ struct TimelineRowView: View {
         // zero‑order patch: show release rate
         if let rateUG = event.extras[.releaseRateUGPerDay] {
             let rounded = String(format: "%.0f", rateUG)
-            return "\(rounded) µg/d"
+            return String(format: NSLocalizedString("timeline.row.dose.releaseRate", comment: "Release rate label"), rounded)
         }
-        
+
         // other routes: show mg
         guard event.doseMG > 0 else { return nil }
-        return "\(String(format: "%.2f", event.doseMG)) mg"
+        return String(format: NSLocalizedString("timeline.row.dose.mg", comment: "Dose label in mg"), String(format: "%.2f", event.doseMG))
     }
     
     var body: some View {
@@ -189,8 +195,8 @@ private func groupEventsByDay(_ events: [DoseEvent]) -> [DayGroup] {
     let sortedEvents = events.sorted { $0.timeH < $1.timeH }
     
     let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_US")
-    formatter.dateFormat = "MMMM d, yyyy, EEEE"
+    formatter.locale = Locale.current
+    formatter.setLocalizedDateFormatFromTemplate("yMMMMdEEEE")
     
     let groupedDictionary = Dictionary(grouping: sortedEvents) { formatter.string(from: $0.date) }
     

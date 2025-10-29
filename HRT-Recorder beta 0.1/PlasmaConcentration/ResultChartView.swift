@@ -42,8 +42,8 @@ struct ResultChartView: View {
         Chart {
             ForEach(datedPoints, id: \.date) { pt in
                 LineMark(
-                    x: .value("Time", pt.date),
-                    y: .value("E2", pt.conc)
+                    x: .value(NSLocalizedString("chart.axis.time", comment: "X-axis label"), pt.date),
+                    y: .value(NSLocalizedString("chart.axis.conc", comment: "Y-axis label"), pt.conc)
                 )
                 .interpolationMethod(.catmullRom)
                 .foregroundStyle(.pink)
@@ -56,7 +56,7 @@ struct ResultChartView: View {
                 AxisTick(length: 5)
                 AxisValueLabel(anchor: .bottom) {
                     if let date = value.as(Date.self) {
-                        Text(date, formatter: dayFormatter)      // e.g. “Aug 2”
+                        Text(date, formatter: dayFormatter)      // e.g. “8月2日”
                     }
                 }
                 AxisValueLabel(anchor: .top) {
@@ -94,7 +94,7 @@ struct ResultChartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Estradiol Concentration (pg/mL)")
+            Text("chart.title")
                 .font(.headline)
                 .padding(.horizontal)
 
@@ -115,7 +115,9 @@ struct ResultChartView: View {
     
     private var dayFormatter: DateFormatter {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d" // e.g., "Aug 1"
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.locale = Locale.current
+        formatter.setLocalizedDateFormatFromTemplate("MMMMd")
         return formatter
     }
 }

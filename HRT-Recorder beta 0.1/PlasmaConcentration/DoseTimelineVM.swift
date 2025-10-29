@@ -34,6 +34,7 @@ final class DoseTimelineVM: ObservableObject {
         self.bodyWeightKG = saved > 0 ? saved : 70.0
         self.onChange = nil
         setupSubscriptions()
+        runSimulation()
     }
 
     init(initialEvents: [DoseEvent], onChange: (([DoseEvent]) -> Void)? = nil) {
@@ -42,6 +43,9 @@ final class DoseTimelineVM: ObservableObject {
         let saved = UserDefaults.standard.double(forKey: weightKey)
         self.bodyWeightKG = saved > 0 ? saved : 70.0
         setupSubscriptions()
+        if !initialEvents.isEmpty {
+            runSimulation()
+        }
     }
     
     private func setupSubscriptions() {
@@ -100,5 +104,11 @@ final class DoseTimelineVM: ObservableObject {
                 self.isSimulating = false
             }
         }
+    }
+
+    func concentration(at date: Date) -> Double? {
+        guard let result else { return nil }
+        let hourValue = date.timeIntervalSince1970 / 3600.0
+        return result.concentration(at: hourValue)
     }
 }

@@ -12,16 +12,32 @@ extension DoseEvent {
     var date: Date { Date(timeIntervalSince1970: timeH * 3600.0) }
 }
 
+private enum TimelineSheet: Identifiable {
+    case add(UUID)
+    case edit(DoseEvent)
+
+    var id: UUID {
+        switch self {
+        case .add(let token): return token
+        case .edit(let event): return event.id
+        }
+    }
+}
+
 struct TimelineScreen: View {
     @StateObject var vm: DoseTimelineVM
-    
+
+#if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+#endif
+
     init(vm: DoseTimelineVM) {
         _vm = StateObject(wrappedValue: vm)
     }
-    
+
     // **NEW**: State to manage which event is being edited.
-    @State private var eventToEdit: DoseEvent?
-    @State private var isSheetPresented = false
+    @State private var activeSheet: TimelineSheet?
+    @State private var isMonitorSheetPresented = false
     @FocusState private var weightFieldFocused: Bool
 
     var body: some View {
@@ -35,8 +51,7 @@ struct TimelineScreen: View {
                             ForEach(dayGroup.events) { event in
                                 // **NEW**: Each row is now a button that triggers the edit sheet.
                                 Button(action: {
-                                    eventToEdit = event
-                                    isSheetPresented = true
+                                    activeSheet = .edit(event)
                                 }) {
                                     TimelineRowView(event: event)
                                 }
@@ -68,19 +83,38 @@ struct TimelineScreen: View {
             .toolbar {
                 // ... (Toolbar remains the same)
                 ToolbarItemGroup(placement: .navigationBarLeading) {
-                    HStack {
-                        Text("timeline.bodyWeight.label").font(.caption)
-                        TextField("timeline.bodyWeight.placeholder", value: $vm.bodyWeightKG, format: .number)
-                            .keyboardType(.decimalPad).submitLabel(.done).focused($weightFieldFocused).frame(width: 50)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("timeline.bodyWeight.label")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 6) {
+                            TextField("timeline.bodyWeight.placeholder", value: $vm.bodyWeightKG, format: .number)
+                                .keyboardType(.decimalPad)
+                                .submitLabel(.done)
+                                .focused($weightFieldFocused)
+                                .frame(width: 70)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                            Text("timeline.bodyWeight.unit")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
                     Button {
-                        eventToEdit = nil // Ensure we are creating a new event
-                        isSheetPresented = true
+                        activeSheet = .add(UUID())
                     } label: {
-                        Image(systemName: "plus.circle.fill").font(.title2)
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .accessibilityLabel(Text("timeline.toolbar.add"))
+                    }
+
+                    Button {
+                        presentMonitor()
+                    } label: {
+                        Image(systemName: "waveform.path.ecg")
+                            .font(.title2)
+                            .accessibilityLabel(Text("timeline.toolbar.monitor"))
                     }
                 }
                 ToolbarItemGroup(placement: .keyboard) {
@@ -88,14 +122,32 @@ struct TimelineScreen: View {
                     Button("common.done") { weightFieldFocused = false }
                 }
             }
-            .sheet(isPresented: $isSheetPresented) {
-                InputEventView(eventToEdit: eventToEdit) { event in
-                    vm.save(event)
+            .sheet(item: $activeSheet) { mode in
+                switch mode {
+                case .add(_):
+                    InputEventView(eventToEdit: nil) { event in
+                        vm.save(event)
+                    }
+                case .edit(let event):
+                    InputEventView(eventToEdit: event) { updated in
+                        vm.save(updated)
+                    }
+                }
+            }
+            .sheet(isPresented: $isMonitorSheetPresented) {
+                NavigationStack {
+                    ConcentrationMonitorView(vm: vm)
+                        .navigationTitle(Text("monitor.title"))
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("common.done") { isMonitorSheetPresented = false }
+                            }
+                        }
                 }
             }
         }
     }
-    
+
     // ... (findOriginalIndices helper remains the same)
     private func findOriginalIndices(for localIndexSet: IndexSet, in dayGroup: DayGroup, from allEvents: [DoseEvent]) -> IndexSet {
         let idsToDelete = localIndexSet.map { dayGroup.events[$0].id }
@@ -103,6 +155,14 @@ struct TimelineScreen: View {
             .filter { idsToDelete.contains($0.element.id) }
             .map { $0.offset }
         return IndexSet(originalIndices)
+    }
+
+    private func presentMonitor() {
+#if os(macOS)
+        openWindow(id: "concentrationMonitor")
+#else
+        isMonitorSheetPresented = true
+#endif
     }
 }
 
@@ -125,7 +185,7 @@ struct TimelineRowView: View {
     private var title: String {
         switch event.route {
         case .injection:
-            return String(format: NSLocalizedString("timeline.row.injection", comment: "Timeline row title for injection"), event.ester.abbreviation)
+            return String(format: NSLocalizedString("timeline.row.injection", comment: "Timeline row title for injection"), locale: Locale.current, event.ester.abbreviation)
         case .patchApply:
             return NSLocalizedString("timeline.row.patchApply", comment: "Timeline row title for patch apply")
         case .patchRemove:
@@ -133,9 +193,9 @@ struct TimelineRowView: View {
         case .gel:
             return NSLocalizedString("timeline.row.gel", comment: "Timeline row title for gel dosing")
         case .oral:
-            return String(format: NSLocalizedString("timeline.row.oral", comment: "Timeline row title for oral"), event.ester.abbreviation)
+            return String(format: NSLocalizedString("timeline.row.oral", comment: "Timeline row title for oral"), locale: Locale.current, event.ester.abbreviation)
         case .sublingual:
-            return String(format: NSLocalizedString("timeline.row.sublingual", comment: "Timeline row title for sublingual"), event.ester.abbreviation)
+            return String(format: NSLocalizedString("timeline.row.sublingual", comment: "Timeline row title for sublingual"), locale: Locale.current, event.ester.abbreviation)
         }
     }
     
@@ -148,13 +208,13 @@ struct TimelineRowView: View {
         
         // zero‑order patch: show release rate
         if let rateUG = event.extras[.releaseRateUGPerDay] {
-            let rounded = String(format: "%.0f", rateUG)
-            return String(format: NSLocalizedString("timeline.row.dose.releaseRate", comment: "Release rate label"), rounded)
+            let rounded = String(format: "%.0f", locale: Locale.current, rateUG)
+            return String(format: NSLocalizedString("timeline.row.dose.releaseRate", comment: "Release rate label"), locale: Locale.current, rounded)
         }
 
         // other routes: show mg
         guard event.doseMG > 0 else { return nil }
-        return String(format: NSLocalizedString("timeline.row.dose.mg", comment: "Dose label in mg"), String(format: "%.2f", event.doseMG))
+        return String(format: NSLocalizedString("timeline.row.dose.mg", comment: "Dose label in mg"), locale: Locale.current, String(format: "%.2f", locale: Locale.current, event.doseMG))
     }
     
     var body: some View {

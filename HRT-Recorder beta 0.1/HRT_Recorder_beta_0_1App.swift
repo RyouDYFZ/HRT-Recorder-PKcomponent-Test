@@ -29,9 +29,12 @@ struct HRTRecorderBetaApp: App {
             TimelineScreen(vm: timelineVM)
         }
 
-        WindowGroup("window.concentrationMonitor") {
+        WindowGroup("window.concentrationMonitor", id: "concentrationMonitor") {
             ConcentrationMonitorView(vm: timelineVM)
         }
+#if os(macOS)
+        .defaultSize(width: 320, height: 420)
+#endif
     }
     .onChange(of: phase) { _, newPhase in
         if newPhase == .inactive || newPhase == .background {

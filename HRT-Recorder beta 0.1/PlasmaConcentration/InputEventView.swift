@@ -63,15 +63,38 @@ struct InputEventView: View {
         if let event = eventToEdit {
             let esterInfo = EsterInfo.by(ester: event.ester)
             let rawDose = event.doseMG / esterInfo.toE2Factor
-            
-            _draft = State(initialValue: DraftDoseEvent(
+
+            var initialDraft = DraftDoseEvent(
                 id: event.id,
                 date: event.date,
                 route: event.route,
                 ester: event.ester,
-                rawEsterDoseText: String(format: "%.2f", rawDose),
-                e2EquivalentDoseText: String(format: "%.2f", event.doseMG)
-            ))
+                rawEsterDoseText: event.ester == .E2 ? "" : String(format: "%.2f", locale: Locale.current, rawDose),
+                e2EquivalentDoseText: String(format: "%.2f", locale: Locale.current, event.doseMG)
+            )
+
+            if event.route == .patchApply {
+                if let rate = event.extras[.releaseRateUGPerDay] {
+                    initialDraft.patchMode = .releaseRate
+                    initialDraft.releaseRateText = String(format: "%.0f", locale: Locale.current, rate)
+                    initialDraft.e2EquivalentDoseText = ""
+                } else {
+                    initialDraft.patchMode = .totalDose
+                }
+            }
+
+            if event.route == .sublingual {
+                if let theta = event.extras[.sublingualTheta] {
+                    initialDraft.useCustomTheta = true
+                    initialDraft.customThetaText = String(format: "%.2f", locale: Locale.current, theta)
+                }
+                if let tierCode = event.extras[.sublingualTier] {
+                    let clampedIndex = min(max(Int(tierCode.rounded()), 0), 3)
+                    initialDraft.slTierIndex = clampedIndex
+                }
+            }
+
+            _draft = State(initialValue: initialDraft)
         } else {
             _draft = State(initialValue: DraftDoseEvent())
         }
@@ -138,7 +161,7 @@ struct InputEventView: View {
                     Section("input.drugDetails") {
                         if availableEsters.count > 1 {
                             Picker("input.drugEster", selection: $draft.ester) {
-                                ForEach(availableEsters) { Text($0.fullName).tag($0) }
+                                ForEach(availableEsters) { Text($0.localizedNameKey).tag($0) }
                             }
 #if swift(>=5.9)
                             .onChange(of: draft.ester) { _, _ in
@@ -155,7 +178,7 @@ struct InputEventView: View {
 
                         // **NEW**: Two-way binding text fields for dose conversion.
                         if draft.ester != .E2 {
-                             TextField(String(format: NSLocalizedString("input.dose.raw", comment: "Dose input placeholder"), draft.ester.abbreviation), text: $draft.rawEsterDoseText)
+                             TextField(String(format: NSLocalizedString("input.dose.raw", comment: "Dose input placeholder"), locale: Locale.current, draft.ester.abbreviation), text: $draft.rawEsterDoseText)
                                 .keyboardType(.decimalPad)
                                 .submitLabel(.done)
                                 .focused($focusedField, equals: .raw)
@@ -232,13 +255,13 @@ struct InputEventView: View {
     private func convertToE2Equivalent() {
         guard let rawDose = parsedDouble(draft.rawEsterDoseText) else { return }
         let factor = EsterInfo.by(ester: draft.ester).toE2Factor
-        draft.e2EquivalentDoseText = String(format: "%.2f", rawDose * factor)
+        draft.e2EquivalentDoseText = String(format: "%.2f", locale: Locale.current, rawDose * factor)
     }
 
     private func convertToRawEster() {
         guard draft.ester != .E2, let e2Dose = parsedDouble(draft.e2EquivalentDoseText) else { return }
         let factor = EsterInfo.by(ester: draft.ester).toE2Factor
-        draft.rawEsterDoseText = String(format: "%.2f", e2Dose / factor)
+        draft.rawEsterDoseText = String(format: "%.2f", locale: Locale.current, e2Dose / factor)
     }
 
     private func syncDoseTextsAfterEsterChange() {

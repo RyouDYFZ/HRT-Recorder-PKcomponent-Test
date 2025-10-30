@@ -32,8 +32,11 @@
 "common.done" = "完成";
 "timeline.empty" = "添加一次给药事件以查看浓度曲线。";
 "timeline.title" = "HRT 时间轴";
-"timeline.bodyWeight.label" = "体重 (kg)：";
+"timeline.bodyWeight.label" = "体重";
 "timeline.bodyWeight.placeholder" = "kg";
+"timeline.bodyWeight.unit" = "千克";
+"timeline.toolbar.add" = "新增给药";
+"timeline.toolbar.monitor" = "打开浓度监视";
 "timeline.row.injection" = "肌注 • %@";
 "timeline.row.patchApply" = "贴剂贴敷";
 "timeline.row.patchRemove" = "贴剂移除";
@@ -53,3 +56,13 @@
 "chart.axis.time" = "时间";
 "chart.axis.conc" = "雌二醇";
 "chart.title" = "雌二醇浓度 (pg/mL)";
+"ester.E2.name" = "雌二醇";
+"ester.E2.abbr" = "E2";
+"ester.EB.name" = "苯甲酸雌二醇";
+"ester.EB.abbr" = "EB";
+"ester.EV.name" = "戊酸雌二醇";
+"ester.EV.abbr" = "EV";
+"ester.EC.name" = "环戊丙酸雌二醇";
+"ester.EC.abbr" = "EC";
+"ester.EN.name" = "庚酸雌二醇";
+"ester.EN.abbr" = "EN";

@@ -51,12 +51,17 @@ struct ResultChartView: View {
         }
         .chartXAxis {
             // Major grid: one per calendar day at 00:00
-                AxisMarks(values: .stride(by: .day)) { value in
+            AxisMarks(values: .stride(by: .day)) { value in
                 AxisGridLine()
                 AxisTick(length: 5)
                 AxisValueLabel(anchor: .bottom) {
                     if let date = value.as(Date.self) {
-                        Text(date, formatter: dayFormatter)      // e.g. “8月2日”
+                        Text(date, format: dayLabelFormat)
+                            .font(.caption)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .minimumScaleFactor(0.7)
+                            .allowsTightening(true)
                     }
                 }
                 AxisValueLabel(anchor: .top) {
@@ -64,13 +69,13 @@ struct ResultChartView: View {
                 }
             }
             // Minor grid: every 6 h
-                AxisMarks(values: .stride(by: .hour, count: 6)) { value in
+            AxisMarks(values: .stride(by: .hour, count: 6)) { value in
                 AxisTick()
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.4, dash: [2, 2]))
                 AxisValueLabel(anchor: .top) {
                     if let date = value.as(Date.self) {
                         let h = Calendar.current.component(.hour, from: date)
-                        Text(String(format: "%02d", h))          // “06” “12” “18”
+                        Text(String(format: "%02d", locale: Locale.current, h))          // “06” “12” “18”
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -107,17 +112,11 @@ struct ResultChartView: View {
     }
     
     // MARK: - Date Formatters
-    private var timeFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH" // e.g., "06", "18"
-        return formatter
-    }
-    
-    private var dayFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.locale = Locale.current
-        formatter.setLocalizedDateFormatFromTemplate("MMMMd")
-        return formatter
+    private var dayLabelFormat: Date.FormatStyle {
+        if sizeClass == .compact {
+            return .dateTime.month(.defaultDigits).day()
+        } else {
+            return .dateTime.month(.abbreviated).day()
+        }
     }
 }

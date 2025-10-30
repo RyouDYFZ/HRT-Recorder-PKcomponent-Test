@@ -5,6 +5,7 @@
 //  所有速率常数单位：h⁻¹
 
 import Foundation
+import SwiftUI
 
 // MARK: - Core
 struct CorePK {
@@ -65,12 +66,18 @@ struct InjectionPK {
 enum Ester: String, CaseIterable, Identifiable, Codable {
     case E2, EB, EV, EC, EN
     var id: Self { self }
-    
+
     /// Provides the full name for display in pickers.
     var fullName: String { EsterInfo.by(ester: self).fullName }
-        
+
+    /// Localized full display name for UI pickers.
+    var localizedNameKey: LocalizedStringKey {
+        LocalizedStringKey("ester.\(rawValue).name")
+    }
+
+    /// Localized abbreviation (e.g. "EV" → localized or transliterated).
     var abbreviation: String {
-        self.rawValue
+        NSLocalizedString("ester.\(rawValue).abbr", comment: "Localized ester abbreviation")
     }
 }
 

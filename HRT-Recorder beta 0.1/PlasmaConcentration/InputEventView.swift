@@ -15,12 +15,17 @@ private enum PatchInputMode: String, CaseIterable, Identifiable {
     case totalDose           // mg in reservoir
     case releaseRate         // µg per day
     var id: Self { self }
-    var label: String {
+    var label: LocalizedStringKey {
         switch self {
-        case .totalDose:   "Total dose (mg)"
-        case .releaseRate: "Release rate (µg/d)"
+        case .totalDose:   "patch.mode.totalDose"
+        case .releaseRate: "patch.mode.releaseRate"
         }
     }
+}
+
+private enum FocusedDoseField: Hashable {
+    case raw
+    case e2
 }
 
 // MARK: - Draft model (for UI binding)
@@ -48,7 +53,8 @@ private struct DraftDoseEvent {
 struct InputEventView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: DraftDoseEvent
-    
+    @FocusState private var focusedField: FocusedDoseField?
+
     var onSave: (DoseEvent) -> Void
     
     // **NEW**: Initializer for both creating a new event and editing an existing one.
@@ -57,15 +63,38 @@ struct InputEventView: View {
         if let event = eventToEdit {
             let esterInfo = EsterInfo.by(ester: event.ester)
             let rawDose = event.doseMG / esterInfo.toE2Factor
-            
-            _draft = State(initialValue: DraftDoseEvent(
+
+            var initialDraft = DraftDoseEvent(
                 id: event.id,
                 date: event.date,
                 route: event.route,
                 ester: event.ester,
-                rawEsterDoseText: String(format: "%.2f", rawDose),
-                e2EquivalentDoseText: String(format: "%.2f", event.doseMG)
-            ))
+                rawEsterDoseText: event.ester == .E2 ? "" : String(format: "%.2f", locale: Locale.current, rawDose),
+                e2EquivalentDoseText: String(format: "%.2f", locale: Locale.current, event.doseMG)
+            )
+
+            if event.route == .patchApply {
+                if let rate = event.extras[.releaseRateUGPerDay] {
+                    initialDraft.patchMode = .releaseRate
+                    initialDraft.releaseRateText = String(format: "%.0f", locale: Locale.current, rate)
+                    initialDraft.e2EquivalentDoseText = ""
+                } else {
+                    initialDraft.patchMode = .totalDose
+                }
+            }
+
+            if event.route == .sublingual {
+                if let theta = event.extras[.sublingualTheta] {
+                    initialDraft.useCustomTheta = true
+                    initialDraft.customThetaText = String(format: "%.2f", locale: Locale.current, theta)
+                }
+                if let tierCode = event.extras[.sublingualTier] {
+                    let clampedIndex = min(max(Int(tierCode.rounded()), 0), 3)
+                    initialDraft.slTierIndex = clampedIndex
+                }
+            }
+
+            _draft = State(initialValue: initialDraft)
         } else {
             _draft = State(initialValue: DraftDoseEvent())
         }
@@ -80,20 +109,20 @@ struct InputEventView: View {
         case .sublingual: return [.E2, .EV]
         }
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
                 // ... (DatePicker and Route Picker remain the same)
                 Section {
-                    DatePicker("Time", selection: $draft.date, displayedComponents: [.date, .hourAndMinute])
-                    Picker("Route", selection: $draft.route) {
-                        Text("Injection").tag(DoseEvent.Route.injection)
-                        Text("Apply Patch").tag(DoseEvent.Route.patchApply)
-                        Text("Remove Patch").tag(DoseEvent.Route.patchRemove)
-                        Text("Gel").tag(DoseEvent.Route.gel)
-                        Text("Oral").tag(DoseEvent.Route.oral)
-                        Text("Sublingual").tag(DoseEvent.Route.sublingual)
+                    DatePicker("input.time", selection: $draft.date, displayedComponents: [.date, .hourAndMinute])
+                    Picker("input.route", selection: $draft.route) {
+                        Text("route.injection").tag(DoseEvent.Route.injection)
+                        Text("route.patchApply").tag(DoseEvent.Route.patchApply)
+                        Text("route.patchRemove").tag(DoseEvent.Route.patchRemove)
+                        Text("route.gel").tag(DoseEvent.Route.gel)
+                        Text("route.oral").tag(DoseEvent.Route.oral)
+                        Text("route.sublingual").tag(DoseEvent.Route.sublingual)
                     }
                     #if swift(>=5.9)
                     .onChange(of: draft.route) { oldValue, newValue in
@@ -129,131 +158,145 @@ struct InputEventView: View {
                 }
                 
                 if draft.route != .patchRemove {
-                    Section("Drug Details") {
+                    Section("input.drugDetails") {
                         if availableEsters.count > 1 {
-                            Picker("Drug / Ester", selection: $draft.ester) {
-                                ForEach(availableEsters) { Text($0.fullName).tag($0) }
+                            Picker("input.drugEster", selection: $draft.ester) {
+                                ForEach(availableEsters) { Text($0.localizedNameKey).tag($0) }
                             }
-                            #if swift(>=5.9)
+#if swift(>=5.9)
                             .onChange(of: draft.ester) { _, _ in
                                 // Recalculate when ester changes
-                                convertToE2Equivalent()
+                                syncDoseTextsAfterEsterChange()
                             }
-                            #else
+#else
                             .onChange(of: draft.ester) { _ in
                                 // Recalculate when ester changes
-                                convertToE2Equivalent()
+                                syncDoseTextsAfterEsterChange()
                             }
-                            #endif
+#endif
                         }
-                        
+
                         // **NEW**: Two-way binding text fields for dose conversion.
                         if draft.ester != .E2 {
-                             TextField("Dose (\(draft.ester.abbreviation))", text: $draft.rawEsterDoseText)
+                             TextField(String(format: NSLocalizedString("input.dose.raw", comment: "Dose input placeholder"), locale: Locale.current, draft.ester.abbreviation), text: $draft.rawEsterDoseText)
                                 .keyboardType(.decimalPad)
-                                #if swift(>=5.9)
-                                .onChange(of: draft.rawEsterDoseText) { _, _ in convertToE2Equivalent() }
-                                #else
-                                .onChange(of: draft.rawEsterDoseText) { _ in convertToE2Equivalent() }
-                                #endif
+                                .submitLabel(.done)
+                                .focused($focusedField, equals: .raw)
+                                .onSubmit { convertToE2Equivalent() }
                         }
-                        
-                        TextField("E2 Equivalent Dose (mg)", text: $draft.e2EquivalentDoseText)
+
+                        TextField("input.dose.e2", text: $draft.e2EquivalentDoseText)
                             .keyboardType(.decimalPad)
-                            #if swift(>=5.9)
-                            .onChange(of: draft.e2EquivalentDoseText) { _, _ in convertToRawEster() }
-                            #else
-                            .onChange(of: draft.e2EquivalentDoseText) { _ in convertToRawEster() }
-                            #endif
+                            .submitLabel(.done)
+                            .focused($focusedField, equals: .e2)
+                            .onSubmit { convertToRawEster() }
                     }
                 }
-                
+
                 // MARK: Patch‑specific input
                 if draft.route == .patchApply {
-                    Section("Patch Input Mode") {
-                        Picker("Mode", selection: $draft.patchMode) {
+                    Section("input.patchMode") {
+                        Picker("input.patchMode.label", selection: $draft.patchMode) {
                             ForEach(PatchInputMode.allCases) { mode in
                                 Text(mode.label).tag(mode)
                             }
                         }
                         .pickerStyle(.segmented)
-                        
+
                         if draft.patchMode == .totalDose {
-                            TextField("Patch total dose (mg)", text: $draft.e2EquivalentDoseText)
+                            TextField("input.patchMode.totalDose", text: $draft.e2EquivalentDoseText)
                                 .keyboardType(.decimalPad)
                         } else {
-                            TextField("Release rate (µg/day)", text: $draft.releaseRateText)
+                            TextField("input.patchMode.releaseRate", text: $draft.releaseRateText)
                                 .keyboardType(.decimalPad)
                         }
                     }
                 }
-                
+
                 // MARK: Sublingual behavior (θ)
                 if draft.route == .sublingual {
-                    Section("Sublingual Behavior") {
+                    Section("input.sublingual") {
                         // Tier picker (segmented)
-                        Picker("Tier", selection: $draft.slTierIndex) {
-                            Text("Quick").tag(0)
-                            Text("Casual").tag(1)
-                            Text("Standard").tag(2)
-                            Text("Strict").tag(3)
+                        Picker("input.sublingual.hold", selection: $draft.slTierIndex) {
+                            Text("input.sublingual.quick").tag(0)
+                            Text("input.sublingual.casual").tag(1)
+                            Text("input.sublingual.standard").tag(2)
+                            Text("input.sublingual.strict").tag(3)
                         }
                         .pickerStyle(.segmented)
-                        
+
                         // Show suggested hold time and θ for current tier
                         let tier = [SublingualTier.quick, .casual, .standard, .strict][min(max(draft.slTierIndex, 0), 3)]
                         let hold = SublingualTheta.holdMinutes[tier] ?? 0
                         let theta = SublingualTheta.recommended[tier] ?? 0.11
-                        Text(String(format: "Suggested: ~%.0f min, θ≈%.2f", hold, theta))
+                        Text(String(format: NSLocalizedString("input.sublingual.suggestion", comment: "Sublingual suggestion"), locale: Locale.current, hold, theta))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                        
+
                         // Optional: custom theta override
-                        Toggle("Custom θ", isOn: $draft.useCustomTheta)
+                        Toggle("input.sublingual.customTheta", isOn: $draft.useCustomTheta)
                         if draft.useCustomTheta {
-                            TextField("Custom θ (0–1)", text: $draft.customThetaText)
+                            TextField("input.sublingual.customThetaPlaceholder", text: $draft.customThetaText)
                                 .keyboardType(.decimalPad)
                         }
                     }
                 }
             }
-            .navigationTitle(draft.id == nil ? "Add Dose" : "Edit Dose")
+            .navigationTitle(draft.id == nil ? Text("input.title.add") : Text("input.title.edit"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() } }
+                ToolbarItem(placement: .cancellationAction) { Button("common.cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("common.save") { save() } }
             }
         }
     }
-    
+
     // MARK: - Conversion Logic
     private func convertToE2Equivalent() {
-        guard let rawDose = Double(draft.rawEsterDoseText) else { return }
+        guard let rawDose = parsedDouble(draft.rawEsterDoseText) else { return }
         let factor = EsterInfo.by(ester: draft.ester).toE2Factor
-        draft.e2EquivalentDoseText = String(format: "%.2f", rawDose * factor)
+        draft.e2EquivalentDoseText = String(format: "%.2f", locale: Locale.current, rawDose * factor)
     }
-    
+
     private func convertToRawEster() {
-        guard draft.ester != .E2, let e2Dose = Double(draft.e2EquivalentDoseText) else { return }
+        guard draft.ester != .E2, let e2Dose = parsedDouble(draft.e2EquivalentDoseText) else { return }
         let factor = EsterInfo.by(ester: draft.ester).toE2Factor
-        draft.rawEsterDoseText = String(format: "%.2f", e2Dose / factor)
+        draft.rawEsterDoseText = String(format: "%.2f", locale: Locale.current, e2Dose / factor)
     }
-    
+
+    private func syncDoseTextsAfterEsterChange() {
+        if draft.ester == .E2 {
+            draft.rawEsterDoseText = ""
+            return
+        }
+
+        if let _ = parsedDouble(draft.e2EquivalentDoseText), !draft.e2EquivalentDoseText.isEmpty {
+            convertToRawEster()
+        } else if let _ = parsedDouble(draft.rawEsterDoseText), !draft.rawEsterDoseText.isEmpty {
+            convertToE2Equivalent()
+        }
+    }
+
+    private func parsedDouble(_ text: String) -> Double? {
+        let sanitized = text.replacingOccurrences(of: ",", with: ".")
+        return Double(sanitized)
+    }
+
     private func save() {
-        var dose = Double(draft.e2EquivalentDoseText) ?? 0
+        var dose = parsedDouble(draft.e2EquivalentDoseText) ?? 0
         var extras: [DoseEvent.ExtraKey: Double] = [:]
-        
+
         // zero‑order patch: rate stored separately
         if draft.route == .patchApply && draft.patchMode == .releaseRate {
             dose = 0
-            if let rateUG = Double(draft.releaseRateText) {
+            if let rateUG = parsedDouble(draft.releaseRateText) {
                 extras[.releaseRateUGPerDay] = rateUG
             }
         }
-        
+
         // sublingual behavior: either tier code or explicit theta
         if draft.route == .sublingual {
-            if draft.useCustomTheta, let th = Double(draft.customThetaText) {
+            if draft.useCustomTheta, let th = parsedDouble(draft.customThetaText) {
                 let clamped = max(0.0, min(1.0, th))
                 extras[.sublingualTheta] = clamped
             } else {

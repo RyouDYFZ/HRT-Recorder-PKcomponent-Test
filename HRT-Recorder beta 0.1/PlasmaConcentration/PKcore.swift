@@ -354,6 +354,36 @@ struct SimulationResult: Equatable {
     let auc: Double
 }
 
+extension SimulationResult {
+    func concentration(at hour: Double) -> Double? {
+        guard !timeH.isEmpty, timeH.count == concPGmL.count else { return nil }
+        if hour <= timeH.first! { return concPGmL.first }
+        if hour >= timeH.last! { return concPGmL.last }
+
+        var low = 0
+        var high = timeH.count - 1
+
+        while high - low > 1 {
+            let mid = (low + high) / 2
+            if timeH[mid] == hour {
+                return concPGmL[mid]
+            } else if timeH[mid] < hour {
+                low = mid
+            } else {
+                high = mid
+            }
+        }
+
+        let t0 = timeH[low]
+        let t1 = timeH[high]
+        let c0 = concPGmL[low]
+        let c1 = concPGmL[high]
+        guard t1 > t0 else { return c0 }
+        let ratio = (hour - t0) / (t1 - t0)
+        return c0 + (c1 - c0) * ratio
+    }
+}
+
 struct SimulationEngine {
     private let precomputedModels: [PrecomputedEventModel]
     private let plasmaVolumeML: Double

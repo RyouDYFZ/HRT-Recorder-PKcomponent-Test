@@ -10,22 +10,35 @@ import SwiftUI
 @main
 struct HRTRecorderBetaApp: App {
     @Environment(\.scenePhase) private var phase
-    @StateObject private var store = PersistedStore<[DoseEvent]>(
-        filename: "dose_events.json",
-        defaultValue: []
-    )
+    @StateObject private var store: PersistedStore<[DoseEvent]>
+    @StateObject private var timelineVM: DoseTimelineVM
+
+    init() {
+        let persistedStore = PersistedStore<[DoseEvent]>(
+            filename: "dose_events.json",
+            defaultValue: []
+        )
+        _store = StateObject(wrappedValue: persistedStore)
+        _timelineVM = StateObject(wrappedValue: DoseTimelineVM(initialEvents: persistedStore.value) { updated in
+            persistedStore.value = updated
+        })
+    }
 
     var body: some Scene {
         WindowGroup {
-            // 根据你的真实构造方法改参数名
-            TimelineScreen(vm: DoseTimelineVM(initialEvents: store.value) { updated in
-                store.value = updated
-            })
+            TimelineScreen(vm: timelineVM)
         }
-        .onChange(of: phase) { _, newPhase in
-            if newPhase == .inactive || newPhase == .background {
-                store.saveSync()
-            }
+
+        WindowGroup("window.concentrationMonitor", id: "concentrationMonitor") {
+            ConcentrationMonitorView(vm: timelineVM)
+        }
+#if os(macOS)
+        .defaultSize(width: 320, height: 420)
+#endif
+    }
+    .onChange(of: phase) { _, newPhase in
+        if newPhase == .inactive || newPhase == .background {
+            store.saveSync()
         }
     }
 }

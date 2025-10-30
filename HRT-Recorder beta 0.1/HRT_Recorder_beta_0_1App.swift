@@ -12,7 +12,7 @@ struct HRTRecorderBetaApp: App {
     @Environment(\.scenePhase) private var phase
     @StateObject private var store: PersistedStore<[DoseEvent]>
     @StateObject private var timelineVM: DoseTimelineVM
-
+    
     init() {
         let persistedStore = PersistedStore<[DoseEvent]>(
             filename: "dose_events.json",
@@ -23,19 +23,26 @@ struct HRTRecorderBetaApp: App {
             persistedStore.value = updated
         })
     }
-
+    
     var body: some Scene {
         WindowGroup {
             TimelineScreen(vm: timelineVM)
         }
-
-        WindowGroup("window.concentrationMonitor") {
+        .onChange(of: phase) { newPhase in
+            if newPhase == .inactive || newPhase == .background {
+                store.saveSync()
+            }
+        }
+        WindowGroup("window.concentrationMonitor", id: "concentrationMonitor") {
             ConcentrationMonitorView(vm: timelineVM)
         }
-    }
-    .onChange(of: phase) { _, newPhase in
-        if newPhase == .inactive || newPhase == .background {
-            store.saveSync()
+#if os(macOS)
+        .defaultSize(width: 320, height: 420)
+#endif
+        .onChange(of: phase) { newPhase in
+            if newPhase == .inactive || newPhase == .background {
+                store.saveSync()
+            }
         }
     }
 }

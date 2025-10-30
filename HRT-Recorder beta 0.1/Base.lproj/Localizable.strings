@@ -32,8 +32,11 @@
 "common.done" = "Done";
 "timeline.empty" = "Add a dosing event to see the concentration curve.";
 "timeline.title" = "HRT Timeline";
-"timeline.bodyWeight.label" = "Body weight (kg):";
+"timeline.bodyWeight.label" = "Body weight";
 "timeline.bodyWeight.placeholder" = "kg";
+"timeline.bodyWeight.unit" = "kg";
+"timeline.toolbar.add" = "Add dose";
+"timeline.toolbar.monitor" = "Open concentration monitor";
 "timeline.row.injection" = "Injection • %@";
 "timeline.row.patchApply" = "Apply Patch";
 "timeline.row.patchRemove" = "Remove Patch";
@@ -53,3 +56,13 @@
 "chart.axis.time" = "Time";
 "chart.axis.conc" = "E2";
 "chart.title" = "Estradiol concentration (pg/mL)";
+"ester.E2.name" = "Estradiol";
+"ester.E2.abbr" = "E2";
+"ester.EB.name" = "Estradiol Benzoate";
+"ester.EB.abbr" = "EB";
+"ester.EV.name" = "Estradiol Valerate";
+"ester.EV.abbr" = "EV";
+"ester.EC.name" = "Estradiol Cypionate";
+"ester.EC.abbr" = "EC";
+"ester.EN.name" = "Estradiol Enanthate";
+"ester.EN.abbr" = "EN";

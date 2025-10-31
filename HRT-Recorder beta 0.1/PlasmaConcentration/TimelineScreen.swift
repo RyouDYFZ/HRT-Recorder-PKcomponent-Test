@@ -27,17 +27,12 @@ private enum TimelineSheet: Identifiable {
 struct TimelineScreen: View {
     @StateObject var vm: DoseTimelineVM
 
-#if os(macOS)
-    @Environment(\.openWindow) private var openWindow
-#endif
-
     init(vm: DoseTimelineVM) {
         _vm = StateObject(wrappedValue: vm)
     }
 
     // **NEW**: State to manage which event is being edited.
     @State private var activeSheet: TimelineSheet?
-    @State private var isMonitorSheetPresented = false
     @FocusState private var weightFieldFocused: Bool
 
     var body: some View {
@@ -108,14 +103,6 @@ struct TimelineScreen: View {
                             .font(.title2)
                             .accessibilityLabel(Text("timeline.toolbar.add"))
                     }
-
-                    Button {
-                        presentMonitor()
-                    } label: {
-                        Image(systemName: "waveform.path.ecg")
-                            .font(.title2)
-                            .accessibilityLabel(Text("timeline.toolbar.monitor"))
-                    }
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -134,17 +121,6 @@ struct TimelineScreen: View {
                     }
                 }
             }
-            .sheet(isPresented: $isMonitorSheetPresented) {
-                NavigationStack {
-                    ConcentrationMonitorView(vm: vm)
-                        .navigationTitle(Text("monitor.title"))
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("common.done") { isMonitorSheetPresented = false }
-                            }
-                        }
-                }
-            }
         }
     }
 
@@ -157,13 +133,6 @@ struct TimelineScreen: View {
         return IndexSet(originalIndices)
     }
 
-    private func presentMonitor() {
-#if os(macOS)
-        openWindow(id: "concentrationMonitor")
-#else
-        isMonitorSheetPresented = true
-#endif
-    }
 }
 
 // MARK: - Timeline Row View

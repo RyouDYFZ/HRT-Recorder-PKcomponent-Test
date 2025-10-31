@@ -8,12 +8,25 @@
 import Foundation
 import SwiftUI
 import Charts
+import Combine
 
 struct ResultChartView: View {
     let sim: SimulationResult
-    
+
     @State private var visibleDomainLength: Double = 48
     @Environment(\.horizontalSizeClass) var sizeClass
+    @State private var now: Date = Date()
+    private let timer = Timer.publish(every: 60, tolerance: 5, on: .main, in: .common).autoconnect()
+
+    private var currentConcentrationText: String {
+        let currentHour = now.timeIntervalSince1970 / 3600.0
+        if let value = sim.concentration(at: currentHour) {
+            let formatted = value.formatted(.number.precision(.fractionLength(1)))
+            return String(format: NSLocalizedString("chart.currentConc.value", comment: "Current concentration label"), locale: Locale.current, formatted)
+        } else {
+            return NSLocalizedString("chart.currentConc.missing", comment: "Current concentration unavailable")
+        }
+    }
 
 
     /// (Date, conc) tuples to simplify the Chart body and help the compiler type‑check faster
@@ -99,15 +112,25 @@ struct ResultChartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("chart.title")
-                .font(.headline)
-                .padding(.horizontal)
+            HStack(alignment: .firstTextBaseline) {
+                Text("chart.title")
+                    .font(.headline)
+                Spacer()
+                Text(currentConcentrationText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(currentConcentrationText)
+            }
+            .padding(.horizontal)
 
             concentrationChart
         }
         .animation(.easeInOut, value: sim.concPGmL)
         .onAppear {
             self.visibleDomainLength = (sizeClass == .compact) ? 24 : 48
+        }
+        .onReceive(timer) { date in
+            now = date
         }
     }
     

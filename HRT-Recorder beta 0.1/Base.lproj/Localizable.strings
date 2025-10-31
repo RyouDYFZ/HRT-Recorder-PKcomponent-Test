@@ -36,7 +36,6 @@
 "timeline.bodyWeight.placeholder" = "kg";
 "timeline.bodyWeight.unit" = "kg";
 "timeline.toolbar.add" = "Add dose";
-"timeline.toolbar.monitor" = "Open concentration monitor";
 "timeline.row.injection" = "Injection • %@";
 "timeline.row.patchApply" = "Apply Patch";
 "timeline.row.patchRemove" = "Remove Patch";
@@ -45,17 +44,11 @@
 "timeline.row.sublingual" = "Sublingual • %@";
 "timeline.row.dose.releaseRate" = "%@ µg/d";
 "timeline.row.dose.mg" = "%@ mg";
-"monitor.noData" = "No data";
-"monitor.value" = "%.1f pg/mL";
-"monitor.prompt" = "Add or simulate dosing events first";
-"monitor.range" = "Simulation range: %@ — %@";
-"monitor.title" = "Live estradiol concentration";
-"monitor.pause" = "Pause updates";
-"monitor.preview" = "Monitor Window";
-"window.concentrationMonitor" = "Concentration Monitor";
 "chart.axis.time" = "Time";
 "chart.axis.conc" = "E2";
 "chart.title" = "Estradiol concentration (pg/mL)";
+"chart.currentConc.value" = "Current E2 concentration: %@ pg/mL";
+"chart.currentConc.missing" = "Current E2 concentration: —";
 "ester.E2.name" = "Estradiol";
 "ester.E2.abbr" = "E2";
 "ester.EB.name" = "Estradiol Benzoate";

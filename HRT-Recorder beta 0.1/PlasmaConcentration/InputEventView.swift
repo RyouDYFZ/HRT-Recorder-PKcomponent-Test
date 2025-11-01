@@ -206,14 +206,14 @@ struct InputEventView: View {
                                 .keyboardType(.decimalPad)
                                 .submitLabel(.done)
                                 .focused($focusedField, equals: .raw)
-                                .onSubmit { convertToE2Equivalent() }
+                                .onSubmit { handleSubmit(for: .raw) }
                         }
 
                         TextField("input.dose.e2", text: $draft.e2EquivalentDoseText)
                             .keyboardType(.decimalPad)
                             .submitLabel(.done)
                             .focused($focusedField, equals: draft.route == .patchApply ? .patchTotal : .e2)
-                            .onSubmit { convertToRawEster() }
+                            .onSubmit { handleSubmit(for: draft.route == .patchApply ? .patchTotal : .e2) }
                     }
                 }
 
@@ -268,6 +268,7 @@ struct InputEventView: View {
                                 .keyboardType(.decimalPad)
                                 .submitLabel(.done)
                                 .focused($focusedField, equals: .customTheta)
+                                .onSubmit { handleSubmit(for: .customTheta) }
                         }
                     }
                 }
@@ -279,13 +280,28 @@ struct InputEventView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("common.save") { save() } }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("common.done") { focusedField = nil }
+                    Button("common.done") {
+                        let field = focusedField
+                        handleSubmit(for: field)
+                        focusedField = nil
+                    }
                 }
             }
         }
     }
 
     // MARK: - Conversion Logic
+    private func handleSubmit(for field: FocusedDoseField?) {
+        switch field {
+        case .raw:
+            convertToE2Equivalent()
+        case .e2, .patchTotal:
+            convertToRawEster()
+        case .customTheta, .patchRelease, .none:
+            break
+        }
+    }
+
     private func convertToE2Equivalent() {
         guard let rawDose = parsedDouble(draft.rawEsterDoseText) else { return }
         let factor = EsterInfo.by(ester: draft.ester).toE2Factor

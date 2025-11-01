@@ -36,7 +36,6 @@
 "timeline.bodyWeight.placeholder" = "kg";
 "timeline.bodyWeight.unit" = "千克";
 "timeline.toolbar.add" = "新增给药";
-"timeline.toolbar.monitor" = "打开浓度监视";
 "timeline.row.injection" = "肌注 • %@";
 "timeline.row.patchApply" = "贴剂贴敷";
 "timeline.row.patchRemove" = "贴剂移除";
@@ -45,17 +44,11 @@
 "timeline.row.sublingual" = "舌下含服 • %@";
 "timeline.row.dose.releaseRate" = "%@ µg/天";
 "timeline.row.dose.mg" = "%@ mg";
-"monitor.noData" = "暂无数据";
-"monitor.value" = "%.1f pg/mL";
-"monitor.prompt" = "请先添加或模拟给药事件";
-"monitor.range" = "模拟区间：%@ — %@";
-"monitor.title" = "实时雌二醇浓度";
-"monitor.pause" = "暂停刷新";
-"monitor.preview" = "监视窗口";
-"window.concentrationMonitor" = "浓度监视";
 "chart.axis.time" = "时间";
 "chart.axis.conc" = "雌二醇";
 "chart.title" = "雌二醇浓度 (pg/mL)";
+"chart.currentConc.value" = "当前雌二醇浓度：%@ pg/mL";
+"chart.currentConc.missing" = "当前雌二醇浓度：—";
 "ester.E2.name" = "雌二醇";
 "ester.E2.abbr" = "E2";
 "ester.EB.name" = "苯甲酸雌二醇";

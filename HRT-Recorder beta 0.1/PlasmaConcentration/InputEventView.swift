@@ -26,6 +26,9 @@ private enum PatchInputMode: String, CaseIterable, Identifiable {
 private enum FocusedDoseField: Hashable {
     case raw
     case e2
+    case patchTotal
+    case patchRelease
+    case customTheta
 }
 
 // MARK: - Draft model (for UI binding)
@@ -203,14 +206,14 @@ struct InputEventView: View {
                                 .keyboardType(.decimalPad)
                                 .submitLabel(.done)
                                 .focused($focusedField, equals: .raw)
-                                .onSubmit { convertToE2Equivalent() }
+                                .onSubmit { handleSubmit(for: .raw) }
                         }
 
                         TextField("input.dose.e2", text: $draft.e2EquivalentDoseText)
                             .keyboardType(.decimalPad)
                             .submitLabel(.done)
-                            .focused($focusedField, equals: .e2)
-                            .onSubmit { convertToRawEster() }
+                            .focused($focusedField, equals: draft.route == .patchApply ? .patchTotal : .e2)
+                            .onSubmit { handleSubmit(for: draft.route == .patchApply ? .patchTotal : .e2) }
                     }
                 }
 
@@ -227,9 +230,13 @@ struct InputEventView: View {
                         if draft.patchMode == .totalDose {
                             TextField("input.patchMode.totalDose", text: $draft.e2EquivalentDoseText)
                                 .keyboardType(.decimalPad)
+                                .submitLabel(.done)
+                                .focused($focusedField, equals: .patchTotal)
                         } else {
                             TextField("input.patchMode.releaseRate", text: $draft.releaseRateText)
                                 .keyboardType(.decimalPad)
+                                .submitLabel(.done)
+                                .focused($focusedField, equals: .patchRelease)
                         }
                     }
                 }
@@ -259,6 +266,9 @@ struct InputEventView: View {
                         if draft.useCustomTheta {
                             TextField("input.sublingual.customThetaPlaceholder", text: $draft.customThetaText)
                                 .keyboardType(.decimalPad)
+                                .submitLabel(.done)
+                                .focused($focusedField, equals: .customTheta)
+                                .onSubmit { handleSubmit(for: .customTheta) }
                         }
                     }
                 }
@@ -268,11 +278,30 @@ struct InputEventView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("common.cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("common.save") { save() } }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("common.done") {
+                        let field = focusedField
+                        handleSubmit(for: field)
+                        focusedField = nil
+                    }
+                }
             }
         }
     }
 
     // MARK: - Conversion Logic
+    private func handleSubmit(for field: FocusedDoseField?) {
+        switch field {
+        case .raw:
+            convertToE2Equivalent()
+        case .e2, .patchTotal:
+            convertToRawEster()
+        case .customTheta, .patchRelease, .none:
+            break
+        }
+    }
+
     private func convertToE2Equivalent() {
         guard let rawDose = parsedDouble(draft.rawEsterDoseText) else { return }
         let factor = EsterInfo.by(ester: draft.ester).toE2Factor

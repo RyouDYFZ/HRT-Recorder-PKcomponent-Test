@@ -26,6 +26,9 @@ private enum PatchInputMode: String, CaseIterable, Identifiable {
 private enum FocusedDoseField: Hashable {
     case raw
     case e2
+    case patchTotal
+    case patchRelease
+    case customTheta
 }
 
 // MARK: - Draft model (for UI binding)
@@ -209,7 +212,7 @@ struct InputEventView: View {
                         TextField("input.dose.e2", text: $draft.e2EquivalentDoseText)
                             .keyboardType(.decimalPad)
                             .submitLabel(.done)
-                            .focused($focusedField, equals: .e2)
+                            .focused($focusedField, equals: draft.route == .patchApply ? .patchTotal : .e2)
                             .onSubmit { convertToRawEster() }
                     }
                 }
@@ -227,9 +230,13 @@ struct InputEventView: View {
                         if draft.patchMode == .totalDose {
                             TextField("input.patchMode.totalDose", text: $draft.e2EquivalentDoseText)
                                 .keyboardType(.decimalPad)
+                                .submitLabel(.done)
+                                .focused($focusedField, equals: .patchTotal)
                         } else {
                             TextField("input.patchMode.releaseRate", text: $draft.releaseRateText)
                                 .keyboardType(.decimalPad)
+                                .submitLabel(.done)
+                                .focused($focusedField, equals: .patchRelease)
                         }
                     }
                 }
@@ -259,6 +266,8 @@ struct InputEventView: View {
                         if draft.useCustomTheta {
                             TextField("input.sublingual.customThetaPlaceholder", text: $draft.customThetaText)
                                 .keyboardType(.decimalPad)
+                                .submitLabel(.done)
+                                .focused($focusedField, equals: .customTheta)
                         }
                     }
                 }
@@ -268,6 +277,10 @@ struct InputEventView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("common.cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("common.save") { save() } }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("common.done") { focusedField = nil }
+                }
             }
         }
     }

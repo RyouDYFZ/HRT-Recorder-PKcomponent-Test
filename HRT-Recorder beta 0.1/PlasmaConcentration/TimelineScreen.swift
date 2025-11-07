@@ -15,11 +15,13 @@ extension DoseEvent {
 private enum TimelineSheet: Identifiable {
     case add(UUID)
     case edit(DoseEvent)
+    case weight
 
     var id: UUID {
         switch self {
         case .add(let token): return token
         case .edit(let event): return event.id
+        case .weight: return UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         }
     }
 }
@@ -76,26 +78,19 @@ struct TimelineScreen: View {
             }
             .navigationTitle("timeline.title")
             .toolbar {
-                // ... (Toolbar remains the same)
-                ToolbarItemGroup(placement: .navigationBarLeading) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("timeline.bodyWeight.label")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 6) {
-                            TextField("timeline.bodyWeight.placeholder", value: $vm.bodyWeightKG, format: .number)
-                                .keyboardType(.decimalPad)
-                                .submitLabel(.done)
-                                .focused($weightFieldFocused)
-                                .frame(width: 70)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                            Text("timeline.bodyWeight.unit")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                // Left: explicit leading item for weight editor
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        activeSheet = .weight
+                    } label: {
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.title2)
+                            .accessibilityLabel(Text("timeline.toolbar.weightEdit"))
                     }
                 }
-                ToolbarItemGroup(placement: .primaryAction) {
+
+                // Right: explicit trailing item for adding events
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         activeSheet = .add(UUID())
                     } label: {
@@ -104,20 +99,37 @@ struct TimelineScreen: View {
                             .accessibilityLabel(Text("timeline.toolbar.add"))
                     }
                 }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("common.done") { weightFieldFocused = false }
-                }
             }
             .sheet(item: $activeSheet) { mode in
                 switch mode {
                 case .add(_):
-                    InputEventView(eventToEdit: nil) { event in
-                        vm.save(event)
+                    // Dosing info sheet: only the event input view
+                    NavigationStack {
+                        InputEventView(eventToEdit: nil) { event in
+                            vm.save(event)
+                        }
+                        .padding()
+                        .navigationTitle("timeline.add.title")
                     }
+
+                case .weight:
+                    // Present a dedicated WeightEditorView which keeps a temporary value until saved.
+                    NavigationStack {
+                        WeightEditorView(initialWeight: vm.bodyWeightKG) { newWeight in
+                            vm.bodyWeightKG = newWeight
+                            activeSheet = nil
+                        } onCancel: {
+                            activeSheet = nil
+                        }
+                    }
+
                 case .edit(let event):
-                    InputEventView(eventToEdit: event) { updated in
-                        vm.save(updated)
+                    // Edit event sheet: same as before
+                    NavigationStack {
+                        InputEventView(eventToEdit: event) { updated in
+                            vm.save(updated)
+                        }
+                        .padding()
                     }
                 }
             }
@@ -231,4 +243,86 @@ private func groupEventsByDay(_ events: [DoseEvent]) -> [DayGroup] {
     
     return groupedDictionary.map { DayGroup(day: $0.key, events: $0.value) }
         .sorted { $0.events.first!.timeH > $1.events.first!.timeH }
+}
+
+// New: dedicated weight editor view used by the sheet above
+struct WeightEditorView: View {
+    @State private var tempWeight: Double
+    @FocusState private var fieldFocused: Bool
+
+    // keep original for change detection
+    private let originalWeight: Double
+
+    let onSave: (Double) -> Void
+    let onCancel: () -> Void
+
+    init(initialWeight: Double, onSave: @escaping (Double) -> Void, onCancel: @escaping () -> Void) {
+        _tempWeight = State(initialValue: initialWeight)
+        self.originalWeight = (initialWeight * 10).rounded() / 10
+        self.onSave = onSave
+        self.onCancel = onCancel
+    }
+
+    private var roundedTemp: Double { (tempWeight * 10).rounded() / 10 }
+    private var isDirty: Bool { roundedTemp != originalWeight }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            // Large display of the weight
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(String(format: "%.1f", roundedTemp))
+                    .font(.system(size: 48, weight: .bold, design: .default))
+                    .accessibilityLabel(Text("timeline.bodyWeight.accessibility.value"))
+                Text("timeline.bodyWeight.unit")
+                    .font(.title3).foregroundColor(.secondary)
+            }
+
+            // Small helper text
+            Text("timeline.bodyWeight.help")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            // Stepper + editable textfield
+            HStack(spacing: 12) {
+                Button(action: { tempWeight = max(30.0, (tempWeight - 0.1)) }) {
+                    Image(systemName: "minus.circle")
+                }.accessibilityLabel(Text("common.decrease"))
+
+                TextField("timeline.bodyWeight.placeholder", value: $tempWeight, format: .number)
+                    .keyboardType(.decimalPad)
+                    .focused($fieldFocused)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(width: 110)
+                    .accessibilityLabel(Text("timeline.bodyWeight.accessibility.input"))
+
+                Button(action: { tempWeight = min(200.0, (tempWeight + 0.1)) }) {
+                    Image(systemName: "plus.circle")
+                }.accessibilityLabel(Text("common.increase"))
+            }
+            .padding(.horizontal)
+
+            Spacer()
+        }
+        .padding()
+        .navigationTitle("timeline.bodyWeight.title")
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("common.save") {
+                    onSave(roundedTemp)
+                }
+                .disabled(!isDirty)
+            }
+            ToolbarItem(placement: .cancellationAction) {
+                Button("common.cancel") { onCancel() }
+            }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("common.done") { fieldFocused = false }
+            }
+        }
+    }
 }

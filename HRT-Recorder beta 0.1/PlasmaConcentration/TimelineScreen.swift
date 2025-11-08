@@ -267,62 +267,94 @@ struct WeightEditorView: View {
     private var isDirty: Bool { roundedTemp != originalWeight }
 
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        // High-level layout: centered big number with minus/plus at left/right,
+        // helper text under the number, editable text field for precise entry,
+        // and a Save button pinned to the bottom of the sheet.
+        VStack(spacing: 16) {
+            Spacer(minLength: 20)
 
-            // Large display of the weight
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(String(format: "%.1f", roundedTemp))
-                    .font(.system(size: 48, weight: .bold, design: .default))
-                    .accessibilityLabel(Text("timeline.bodyWeight.accessibility.value"))
-                Text("timeline.bodyWeight.unit")
-                    .font(.title3).foregroundColor(.secondary)
+            // Center band: minus - big number - plus
+            HStack(alignment: .center, spacing: 20) {
+                // Decrease
+                Button(action: {
+                    withAnimation { tempWeight = max(30.0, (tempWeight - 0.1)) }
+                }) {
+                    Image(systemName: "minus.circle.fill")
+                        .resizable().scaledToFit()
+                        .frame(width: 56, height: 56)
+                        .foregroundColor(.pink)
+                        .accessibilityLabel(Text("common.decrease"))
+                }
+
+                // Large number + unit
+                VStack(spacing: 4) {
+                    Text(String(format: "%.1f", roundedTemp))
+                        .font(.system(size: 56, weight: .bold, design: .default))
+                        .minimumScaleFactor(0.5)
+                        .accessibilityLabel(Text("timeline.bodyWeight.accessibility.value"))
+
+                    Text("timeline.bodyWeight.unit")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                }
+                .frame(minWidth: 120)
+
+                // Increase
+                Button(action: {
+                    withAnimation { tempWeight = min(200.0, (tempWeight + 0.1)) }
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .resizable().scaledToFit()
+                        .frame(width: 56, height: 56)
+                        .foregroundColor(.pink)
+                        .accessibilityLabel(Text("common.increase"))
+                }
             }
+            .padding(.horizontal)
 
-            // Small helper text
+            // Helper text
             Text("timeline.bodyWeight.help")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
-            // Stepper + editable textfield
-            HStack(spacing: 12) {
-                Button(action: { tempWeight = max(30.0, (tempWeight - 0.1)) }) {
-                    Image(systemName: "minus.circle")
-                }.accessibilityLabel(Text("common.decrease"))
-
-                TextField("timeline.bodyWeight.placeholder", value: $tempWeight, format: .number)
-                    .keyboardType(.decimalPad)
-                    .focused($fieldFocused)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .frame(width: 110)
-                    .accessibilityLabel(Text("timeline.bodyWeight.accessibility.input"))
-
-                Button(action: { tempWeight = min(200.0, (tempWeight + 0.1)) }) {
-                    Image(systemName: "plus.circle")
-                }.accessibilityLabel(Text("common.increase"))
-            }
-            .padding(.horizontal)
-
             Spacer()
         }
         .padding()
         .navigationTitle("timeline.bodyWeight.title")
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("common.save") {
-                    onSave(roundedTemp)
-                }
-                .disabled(!isDirty)
-            }
-            ToolbarItem(placement: .cancellationAction) {
+            // Cancel in navigation bar leading
+            ToolbarItem(placement: .navigationBarLeading) {
                 Button("common.cancel") { onCancel() }
             }
+
+            // Keep keyboard Done button
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("common.done") { fieldFocused = false }
             }
+        }
+        // Pin Save button to the bottom using safeAreaInset so it stays visually separated
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 8) {
+                Divider()
+                Button(action: {
+                    onSave(roundedTemp)
+                }) {
+                    Text("common.save")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .disabled(!isDirty)
+                .buttonStyle(.borderedProminent)
+                .tint(.pink)
+                .controlSize(.large)
+                .padding(.horizontal)
+                // add a little bottom padding to account for home indicator
+                .padding(.bottom, 8)
+            }
+            .background(Color(UIColor.systemBackground))
         }
     }
 }

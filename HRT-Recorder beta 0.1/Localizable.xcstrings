@@ -108,7 +108,20 @@
       }
     },
     "common.decrease" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decrease"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "减少"
+          }
+        }
+      }
     },
     "common.done" : {
       "localizations" : {
@@ -127,7 +140,20 @@
       }
     },
     "common.increase" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Increase"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "增加"
+          }
+        }
+      }
     },
     "common.save" : {
       "localizations" : {
@@ -787,9 +813,6 @@
     "timeline.add.title" : {
       "shouldTranslate" : false
     },
-    "timeline.bodyWeight.accessibility.input" : {
-      "shouldTranslate" : false
-    },
     "timeline.bodyWeight.accessibility.value" : {
       "shouldTranslate" : false
     },
@@ -799,22 +822,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设定的体重会影响血药浓度的计算"
-          }
-        }
-      }
-    },
-    "timeline.bodyWeight.placeholder" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "kg"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "kg"
           }
         }
       }

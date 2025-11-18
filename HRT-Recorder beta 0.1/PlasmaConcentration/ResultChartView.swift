@@ -16,6 +16,7 @@ struct ResultChartView: View {
     @State private var visibleDomainLength: Double = 48
     @Environment(\.horizontalSizeClass) var sizeClass
     @State private var now: Date = Date()
+    @State private var scrollPosition: Date?
     private let timer = Timer.publish(every: 60, tolerance: 5, on: .main, in: .common).autoconnect()
 
     private var currentConcentrationText: String {
@@ -108,6 +109,7 @@ struct ResultChartView: View {
         }
         .chartXVisibleDomain(length: visibleDomainLength * 3600)   // hours -> seconds
         .chartScrollableAxes(.horizontal)
+        .chartScrollPosition(x: $scrollPosition)
     }
 
     var body: some View {
@@ -128,9 +130,13 @@ struct ResultChartView: View {
         .animation(.easeInOut, value: sim.concPGmL)
         .onAppear {
             self.visibleDomainLength = (sizeClass == .compact) ? 24 : 48
+            scrollPosition = now
         }
         .onReceive(timer) { date in
             now = date
+        }
+        .onChange(of: sim.timeH.first) { _ in
+            scrollPosition = Date()
         }
     }
     

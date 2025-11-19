@@ -249,6 +249,7 @@ private func groupEventsByDay(_ events: [DoseEvent]) -> [DayGroup] {
 struct WeightEditorView: View {
     @State private var tempWeight: Double
     @FocusState private var fieldFocused: Bool
+    @State private var weightText: String
 
     // keep original for change detection
     private let originalWeight: Double
@@ -258,6 +259,7 @@ struct WeightEditorView: View {
 
     init(initialWeight: Double, onSave: @escaping (Double) -> Void, onCancel: @escaping () -> Void) {
         _tempWeight = State(initialValue: initialWeight)
+        _weightText = State(initialValue: String(format: "%.1f", locale: Locale.current, initialWeight))
         self.originalWeight = (initialWeight * 10).rounded() / 10
         self.onSave = onSave
         self.onCancel = onCancel
@@ -292,6 +294,21 @@ struct WeightEditorView: View {
                         .font(.system(size: 56, weight: .bold, design: .default))
                         .minimumScaleFactor(0.5)
                         .accessibilityLabel(Text("timeline.bodyWeight.accessibility.value"))
+                        .onTapGesture { fieldFocused = true }
+
+                    TextField("", text: $weightText)
+                        .keyboardType(.decimalPad)
+                        .submitLabel(.done)
+                        .focused($fieldFocused)
+                        .onChange(of: weightText) { newValue in
+                            let sanitized = newValue.replacingOccurrences(of: ",", with: ".")
+                            if let value = Double(sanitized) {
+                                tempWeight = min(max(value, 30.0), 200.0)
+                            }
+                        }
+                        .opacity(0.01)
+                        .frame(width: 1, height: 1)
+                        .accessibilityHidden(true)
 
                     Text("timeline.bodyWeight.unit")
                         .font(.title3)
@@ -355,6 +372,9 @@ struct WeightEditorView: View {
                 .padding(.bottom, 8)
             }
             .background(Color(UIColor.systemBackground))
+        }
+        .onChange(of: tempWeight) { _ in
+            weightText = String(format: "%.1f", locale: Locale.current, roundedTemp)
         }
     }
 }

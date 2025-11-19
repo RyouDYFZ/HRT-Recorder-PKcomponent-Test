@@ -261,6 +261,11 @@ struct InputEventView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
+                        Text("input.sublingual.instructions")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+
                         // Optional: custom theta override
                         Toggle("input.sublingual.customTheta", isOn: $draft.useCustomTheta)
                         if draft.useCustomTheta {

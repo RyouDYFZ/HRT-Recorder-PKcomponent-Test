@@ -16,7 +16,7 @@ struct ResultChartView: View {
     @State private var visibleDomainLength: Double = 48
     @Environment(\.horizontalSizeClass) var sizeClass
     @State private var now: Date = Date()
-    @State private var scrollPosition: Date?
+    @State private var scrollPosition: Date = Date()
     private let timer = Timer.publish(every: 60, tolerance: 5, on: .main, in: .common).autoconnect()
 
     private var currentConcentrationText: String {
@@ -135,7 +135,7 @@ struct ResultChartView: View {
         .onReceive(timer) { date in
             now = date
         }
-        .onChange(of: sim.timeH.first) { _ in
+        .onChange(of: sim.timeH.first) {
             scrollPosition = Date()
         }
     }

@@ -4,11 +4,8 @@
     "" : {
 
     },
-    "%lld" : {
-      "shouldTranslate" : false
-    },
-    "00" : {
-      "shouldTranslate" : false
+    "chart.accessibility" : {
+
     },
     "chart.axis.conc" : {
       "comment" : "Y-axis label",

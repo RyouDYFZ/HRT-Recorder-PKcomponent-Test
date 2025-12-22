@@ -116,9 +116,8 @@ struct ParameterResolver {
                             F_fast: tuple.F, F_slow: tuple.F)
         case .oral:
             let k1Value = (event.ester == .EV) ? OralPK.kAbsEV : OralPK.kAbsE2
-            // Oral is currently modeled as a 1-comp absorption of *E2-equivalent* input.
-            // So we do NOT apply an explicit ester hydrolysis step here.
-            let k2Value = 0.0
+            let k2Value = (event.ester == .EV) ? (EsterPK.k2[.EV] ?? 0) : 0
+            // MODIFIED: Adapt to new PKParams struct for constant-k model.
             return PKParams(Frac_fast: 1.0, k1_fast: k1Value, k1_slow: 0,
                             k2: k2Value, k3: k3,
                             F: OralPK.bioavailability, rateMGh: 0,
@@ -161,10 +160,8 @@ struct ParameterResolver {
             let F_fast = 1.0
             let F_slow = OralPK.bioavailability
 
-            // Sublingual fast branch is modeled as direct E2 absorption (E2-equivalent input).
-            // Swallowed/slow branch is modeled to match the current oral 1-comp model.
-            // Therefore we do NOT apply an explicit ester hydrolysis (k2) in sublingual either.
-            let k2Value = 0.0
+            // 若为 EV，则进入体循环后仍需水解为 E2，使用已标定的 k2；E2 则 k2 = 0
+            let k2Value = (event.ester == .EV) ? (EsterPK.k2[.EV] ?? 0) : 0
 
             return PKParams(
                 Frac_fast: max(0.0, min(1.0, theta)),
@@ -210,9 +207,13 @@ fileprivate struct PrecomputedEventModel {
             self.model = { timeH in
                 let tau = timeH - startTime
                 guard tau >= 0 else { return 0 }
-                // Sublingual is modeled without an explicit hydrolysis step.
-                // This guarantees θ = 0 collapses exactly to the oral 1-comp model.
-                return ThreeCompartmentModel.dualAbsAmount(tau: tau, doseMG: dose, p: params)
+                if params.k2 > 0 {
+                    // EV 舌下：吸收→水解→清除（两支路都走 3C）
+                    return ThreeCompartmentModel.dualAbs3CAmount(tau: tau, doseMG: dose, p: params)
+                } else {
+                    // E2 舌下：无水解，沿用一室解析式
+                    return ThreeCompartmentModel.dualAbsAmount(tau: tau, doseMG: dose, p: params)
+                }
             }
         case .patchApply:
             let remove = allEvents.first { $0.route == .patchRemove && $0.timeH > startTime }

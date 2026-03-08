@@ -72,6 +72,11 @@ final class DoseTimelineVM: ObservableObject {
         events.remove(atOffsets: offsets)
         runSimulation()
     }
+
+    func replaceAllEvents(_ newEvents: [DoseEvent]) {
+        events = newEvents.sorted { $0.timeH < $1.timeH }
+        runSimulation()
+    }
     
     func runSimulation() {
         simulationTask?.cancel()

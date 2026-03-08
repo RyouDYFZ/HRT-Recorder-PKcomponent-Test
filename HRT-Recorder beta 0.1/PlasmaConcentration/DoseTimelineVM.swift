@@ -77,6 +77,7 @@ final class DoseTimelineVM: ObservableObject {
         simulationTask?.cancel()
         guard !events.isEmpty else {
             result = nil
+            isSimulating = false
             return
         }
         
@@ -99,10 +100,8 @@ final class DoseTimelineVM: ObservableObject {
             
             if Task.isCancelled { return }
             
-            await MainActor.run {
-                self.result = simulationResult
-                self.isSimulating = false
-            }
+            self.result = simulationResult
+            self.isSimulating = false
         }
     }
 
